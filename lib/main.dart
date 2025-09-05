@@ -1,12 +1,20 @@
 import 'package:dharmlok_frontend/screens/select_religion_screen.dart';
 import 'package:dharmlok_frontend/screens/sign_up_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/sign_in_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'screens/home_screen.dart'; // create later
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('Warning: Could not load .env file: $e');
+  }
   runApp(const DharmlokApp());
 }
 

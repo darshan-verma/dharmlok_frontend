@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/user_service.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -9,8 +11,12 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final UserService userService = UserService();
   bool keepSignedIn = false;
   bool showPassword = false;
+  bool isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +63,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  controller: _emailController,
                   decoration: InputDecoration(
                     prefixIcon: Icon(Icons.person_outline, color: Color(0xFFB2C94B)),
                     hintText: 'Enter your email address...',
@@ -81,6 +88,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  controller: _passwordController,
                   obscureText: !showPassword,
                   decoration: InputDecoration(
                     prefixIcon: Icon(Icons.lock_outline, color: Color(0xFFB2C94B)),
@@ -143,7 +151,42 @@ class _SignInScreenState extends State<SignInScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12), // reduced from 18
                       elevation: 0,
                     ),
-                    onPressed: () {},
+                    onPressed: isLoading ? null : () async {
+  if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please fill all fields'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+  setState(() { isLoading = true; });
+  try {
+    await userService.signIn(
+      _emailController.text,
+      _passwordController.text,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Sign in successful!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    // Navigate to home screen
+    Navigator.pushReplacementNamed(context, '/home');
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Sign in failed. Please try again.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    debugPrint('Sign in error: $e');
+  } finally {
+    setState(() { isLoading = false; });
+  }
+},
                     child: const Text(
                       'Sign In',
                       style: TextStyle(fontSize: 16, color: Colors.white), // reduced font size

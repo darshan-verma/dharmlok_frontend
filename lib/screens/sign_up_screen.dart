@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/user_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -14,6 +15,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final UserService userService = UserService();
   bool showPassword = false;
   bool showConfirm = false;
 
@@ -268,8 +270,57 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12), // reduced from 16
                       elevation: 0,
                     ),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/sign-in');
+                    onPressed: () async {
+                      // Validate inputs
+                      if (_nameController.text.isEmpty ||
+                          _emailController.text.isEmpty ||
+                          _phoneController.text.isEmpty ||
+                          _passwordController.text.isEmpty ||
+                          _confirmController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill all fields'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (_passwordController.text != _confirmController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Passwords do not match'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        await userService.signUp(
+                          _nameController.text,
+                          _emailController.text,
+                          _phoneController.text,
+                          _passwordController.text,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Account created successfully!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        Navigator.pushReplacementNamed(context, '/sign-in');
+                      } catch (e) {
+                        // Handle error - show user-friendly message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Sign up failed. Please try again.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        // For debugging, you can use debugPrint which is removed in release builds
+                        debugPrint('Sign up error: $e');
+                      }
                     },
                     child: const Text(
                       'Sign Up',
