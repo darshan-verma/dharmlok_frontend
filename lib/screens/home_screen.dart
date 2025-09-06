@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:dharmlok_frontend/screens/dharmguru_screen.dart';
+import 'package:dharmlok_frontend/widgets/custom_bottom_navbar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,6 +12,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 32,
             ),
             const SizedBox(width: 8),
-            const Text(
-              'Dharmlok',
-              style: TextStyle(
-                color: Color(0xFF8B6F4E),
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-              ),
-            ),
           ],
         ),
         actions: [
@@ -263,14 +263,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildServiceItem('Book Pooja', 'assets/images/book_pooja.png'),
-                  _buildServiceItem('Dharmshala', 'assets/images/dharmshala.png'),
-                  _buildServiceItem('Live Darshan', 'assets/images/live_darshan.png'),
-                  _buildServiceItem('Temple', 'assets/images/temple.png'),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    _buildServiceItem('Book Pooja', 'assets/images/book_pooja.png'),
+                    const SizedBox(width: 24),
+                    _buildServiceItem('Dharmshala', 'assets/images/dharmshala.png'),
+                    const SizedBox(width: 24),
+                    _buildServiceItem('Live Darshan', 'assets/images/live_darshan.png'),
+                    const SizedBox(width: 24),
+                    _buildServiceItem('Temple', 'assets/images/temple.png'),
+                    const SizedBox(width: 16),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
               
@@ -300,9 +307,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 200,
+                height: 220,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     _buildTrendingCard(
                       'Vastu Shanti pooja',
@@ -314,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       'Havan Pooja',
                       '4.2',
                       '89 Reviews',
-                      'assets/images/havan_pooja.png',
+                      'assets/images/vastu_shanti.png',
                     ),
                   ],
                 ),
@@ -334,10 +342,18 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildDiscoverItem(
-                      'Dharmguru',
-                      'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
-                      'assets/images/dharmguru.png',
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => DharmguruScreen()),
+                        );
+                      },
+                      child: _buildDiscoverItem(
+                        'Dharmguru',
+                        'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
+                        'assets/images/dharmguru.png',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -345,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildDiscoverItem(
                       'Kathavachak',
                       'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
-                      'assets/images/kathavachak.png',
+                      'assets/images/dharmguru.png',
                     ),
                   ),
                 ],
@@ -357,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildDiscoverItem(
                       'Bal Vidya',
                       'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
-                      'assets/images/bal_vidya.png',
+                      'assets/images/dharmguru.png',
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -365,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildDiscoverItem(
                       'Daily Panchang',
                       'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
-                      'assets/images/daily_panchang.png',
+                      'assets/images/dharmguru.png',
                     ),
                   ),
                 ],
@@ -414,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       '₹799',
                       '₹1200',
                       'Cash on Delivery Available',
-                      'assets/images/product2.png',
+                      'assets/images/blackwood_mala.png',
                     ),
                   ],
                 ),
@@ -447,19 +463,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 200,
+                height: 220,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     _buildBlogCard(
                       'Lorem ipsum dolor sit amet consectetur.',
                       'Lorem ipsum dolor sit amet consectetur. Tortor a eget facilisis sit at aliquam sadales vitl. Facilisi arcu pellentesque mauris porttitor nec lectus rhoncus.',
-                      'assets/images/blog1.png',
+                      'assets/images/vastu_shanti.png',
                     ),
                     _buildBlogCard(
                       'Lorem ipsum dolor sit amet consectetur.',
                       'Lorem ipsum dolor sit amet consectetur. Tortor a eget facilisis sit at aliquam sadales vitl. Facilisi arcu pellentesque mauris porttitor nec lectus rhoncus.',
-                      'assets/images/blog2.png',
+                      'assets/images/vastu_shanti.png',
                     ),
                   ],
                 ),
@@ -497,9 +514,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     _buildGalleryItem('assets/images/gallery1.png'),
-                    _buildGalleryItem('assets/images/gallery2.png'),
-                    _buildGalleryItem('assets/images/gallery3.png'),
-                    _buildGalleryItem('assets/images/gallery4.png'),
+                    _buildGalleryItem('assets/images/gallery1.png'),
+                    _buildGalleryItem('assets/images/gallery1.png'),
+                    _buildGalleryItem('assets/images/gallery1.png'),
                   ],
                 ),
               ),
@@ -569,75 +586,55 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFFE67C2F),
-        unselectedItemColor: const Color(0xFF8B8B8B),
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: _selectedIndex,
+        onTabSelected: _onItemTapped,
+      ),
+    );
+  }
+
+  Widget _buildServiceItem(String title, String imagePath) {
+    return SizedBox(
+      width: 80, // Fixed width to prevent overflow
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE67C2F),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Image.asset(
+                imagePath,
+                width: 32,
+                height: 32,
+                color: Colors.white,
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Event Booking',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF2D2D2D),
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildServiceItem(String title, String imagePath) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE67C2F),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Image.asset(
-              imagePath,
-              width: 32,
-              height: 32,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF2D2D2D),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
   Widget _buildTrendingCard(String title, String rating, String reviews, String imagePath) {
     return Container(
       width: 180,
+      height: 210, // Increased height to prevent overflow
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -679,57 +676,66 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D2D2D),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      rating,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2D2D2D),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      reviews,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF8B8B8B),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        rating,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          reviews,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF8B8B8B),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 32,
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B6F4E),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                      ),
+                      child: const Text(
+                        'Book Now',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B6F4E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                    ),
-                    child: const Text(
-                      'Book Now',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -868,6 +874,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBlogCard(String title, String description, String imagePath) {
     return Container(
       width: 200,
+      height: 210, // Fixed height to prevent overflow
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -893,41 +900,46 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D2D2D),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2D2D2D),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF8B8B8B),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8B8B8B),
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Read more',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFE67C2F),
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Read more',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFE67C2F),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

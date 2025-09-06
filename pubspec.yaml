@@ -72,6 +72,17 @@ flutter:
     - assets/images/buddhism.png
     - assets/images/jainism.png
     - assets/images/sikh-symbol.png
+    - assets/images/banner1.png
+    - assets/images/book_pooja.png
+    - assets/images/dharmshala.png
+    - assets/images/live_darshan.png
+    - assets/images/temple.png
+    - assets/images/vastu_shanti.png
+    - assets/images/dharmguru.png
+    - assets/images/blackwood_mala.png
+    - assets/images/gallery1.png
+    - assets/images/ganesha_aarti.png
+    - assets/images/ravi_shankar.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
