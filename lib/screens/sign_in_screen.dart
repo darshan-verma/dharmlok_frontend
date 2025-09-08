@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/user_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -163,10 +164,15 @@ class _SignInScreenState extends State<SignInScreen> {
   }
   setState(() { isLoading = true; });
   try {
-    await userService.signIn(
+    final result = await userService.signIn(
       _emailController.text,
       _passwordController.text,
     );
+    // Save token or user info
+    if (result['token'] != null) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('authToken', result['token']);
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Sign in successful!'),
