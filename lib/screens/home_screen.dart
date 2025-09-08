@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:dharmlok_frontend/screens/dharmguru_screen.dart';
+import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_screen.dart';
 import 'package:dharmlok_frontend/widgets/custom_bottom_navbar.dart';
 
 class HomeScreen extends StatefulWidget {

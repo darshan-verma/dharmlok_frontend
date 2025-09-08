@@ -1,4 +1,4 @@
-import 'package:dharmlok_frontend/screens/dharmguru_screen.dart';
+import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_screen.dart';
 import 'package:dharmlok_frontend/screens/select_religion_screen.dart';
 import 'package:dharmlok_frontend/screens/sign_up_screen.dart';
 import 'package:flutter/material.dart';
