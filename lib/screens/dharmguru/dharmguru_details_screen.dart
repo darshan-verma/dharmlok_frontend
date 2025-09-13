@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_bio.dart';
+import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_posts.dart';
 
 class DharmguruDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> guru;
@@ -193,8 +194,11 @@ class _DharmguruDetailsScreenState extends State<DharmguruDetailsScreen> with Si
                 children: [
                   // Biography Tab
                   DharmguruBio(guruId: widget.guru['id']),
-                  Center(child: Text('Posts', style: TextStyle(fontSize: 16))),
+                  // Posts Tab
+                  DharmguruPosts(guruId: widget.guru['id']),
+                  // Videos Tab
                   Center(child: Text('Videos', style: TextStyle(fontSize: 16))),
+                  // Photos Tab
                   Center(child: Text('Photos', style: TextStyle(fontSize: 16))),
                 ],
               ),
