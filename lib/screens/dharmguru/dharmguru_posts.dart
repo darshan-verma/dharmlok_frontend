@@ -40,6 +40,9 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
   Map<String, int> _likeCounts = {}; // postId -> likeCount
   Map<String, bool> _likeStatuses = {}; // postId -> isLiked
   Set<String> _likingPosts = {}; // Track posts currently being liked/unliked
+  
+  // Comment count state management
+  Map<String, int> _commentCounts = {}; // postId -> commentCount
 
   @override
   bool get wantKeepAlive => true; // This prevents the widget from being recreated
@@ -97,6 +100,22 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
         } catch (e) {
       print('Error fetching like status for post $postId: $e');
     }
+  }
+
+  // Fetch comment count for a post
+  Future<void> _fetchCommentCount(String postId) async {
+    try {
+      final comments = await CommentsService.fetchComments(postId);
+      setState(() {
+        _commentCounts[postId] = comments.length;
+      });
+    } catch (e) {
+      print('Error fetching comment count for post $postId: $e');
+      // Set to 0 if there's an error
+      setState(() {
+        _commentCounts[postId] = 0;
+      });
+    }
   }  Widget _buildPostCard(Map<String, dynamic> post) {
     final postId = post['id'] ?? '';
     final caption = post['caption'] ?? '';
@@ -104,10 +123,14 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     final userType = post['userType'] ?? '';
     final mediaList = post['media'] is List ? post['media'] as List : [];
     
-    // Handle comment count - try different possible field names
-    final commentsCount = post['commentsCount'] ?? 
-                         post['commentCount'] ?? 
-                         (post['comments'] is List ? (post['comments'] as List).length : 0);
+    // Handle comment count - check API field first, then fallback to fetched count
+    final apiCommentCount = post['commentCount'];
+    final commentsCount = apiCommentCount ?? _commentCounts[postId] ?? 0;
+    
+    // Initialize comment count for this post if not exists and API doesn't provide it
+    if (apiCommentCount == null && !_commentCounts.containsKey(postId)) {
+      _fetchCommentCount(postId);
+    }
     
     // Initialize like state for this post if not exists (similar to useEffect)
     if (!_likeCounts.containsKey(postId)) {
@@ -803,11 +826,10 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
 
   Future<bool> _addComment(String postId, String commentText) async {
     if (commentText.trim().isEmpty) return false;
-    
     try {
       final userService = UserService();
       final currentUserId = userService.getDefaultUserId();
-      
+      print('Sending comment: userId=[32m$currentUserId[0m, text=[32m$commentText[0m'); // DEBUG
       final success = await CommentsService.addComment(
         postId: postId,
         userId: currentUserId,

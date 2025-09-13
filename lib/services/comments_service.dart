@@ -45,56 +45,24 @@ class CommentsService {
     required String text,
   }) async {
     try {
-      // Try different possible API endpoints for adding comments
-      List<Map<String, dynamic>> possibleRequests = [
-        {
-          'url': '$baseUrl/comments',
-          'body': {
-            'postId': postId,
-            'userId': userId,
-            'text': text,
-          }
-        },
-        {
-          'url': '$baseUrl/posts/$postId/comments',
-          'body': {
-            'userId': userId,
-            'text': text,
-          }
-        },
-        {
-          'url': '$baseUrl/comment',
-          'body': {
-            'postId': postId,
-            'userId': userId,
-            'text': text,
-          }
-        },
-      ];
-      
-      for (var request in possibleRequests) {
-        try {
-          final response = await http.post(
-            Uri.parse(request['url']),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode(request['body']),
-          );
-          
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            print('Successfully added comment via: ${request['url']}');
-            return true;
-          } else {
-            print('Failed to add comment via ${request['url']}: ${response.statusCode}');
-            print('Response body: ${response.body}');
-          }
-        } catch (e) {
-          print('Request to ${request['url']} failed: $e');
-          continue;
-        }
+      final url = '$baseUrl/posts/$postId/comments';
+      final body = {
+        'userId': userId,
+        'text': text,
+      };
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Successfully added comment via: $url');
+        return true;
+      } else {
+        print('Failed to add comment via $url: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return false;
       }
-      
-      print('All comment addition endpoints failed');
-      return false;
     } catch (e) {
       print('Error adding comment: $e');
       return false;

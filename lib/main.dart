@@ -1,8 +1,8 @@
 import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_screen.dart';
 import 'package:dharmlok_frontend/screens/select_religion_screen.dart';
 import 'package:dharmlok_frontend/screens/sign_up_screen.dart';
+import 'package:dharmlok_frontend/services/user_service.dart';
 import 'package:flutter/material.dart';
-// import 'package:flutter/foundation.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/sign_in_screen.dart';
@@ -18,6 +18,10 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Warning: Could not load .env file: $e');
   }
+  
+  // Initialize UserService
+  await UserService().initialize();
+  
   runApp(const DharmlokApp());
 }
 

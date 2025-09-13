@@ -168,11 +168,24 @@ class _SignInScreenState extends State<SignInScreen> {
       _emailController.text,
       _passwordController.text,
     );
+    
     // Save token or user info
     if (result['token'] != null) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('authToken', result['token']);
     }
+    
+    // Set current user info in UserService
+    if (result['user'] != null) {
+      final user = result['user'];
+      await userService.setCurrentUser(
+        userId: user['id'] ?? user['_id'] ?? '',
+        userName: user['name'] ?? '',
+        userEmail: user['email'] ?? '',
+        profileImageUrl: user['profileImageUrl'],
+      );
+    }
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Sign in successful!'),

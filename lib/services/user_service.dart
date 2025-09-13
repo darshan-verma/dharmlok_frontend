@@ -82,9 +82,14 @@ class UserService {
     await prefs.remove(_userProfileImageKey);
   }
   
-  // Get default user ID for testing (temporary solution)
+  // Get current user ID (returns empty string if not logged in)
   String getDefaultUserId() {
-    return _currentUserId ?? '687dd4f154f7bad5fcb2e970'; // Default test user ID
+    return _currentUserId ?? '';
+  }
+
+  // Get current user name (returns empty string if not logged in)
+  String getDefaultUserName() {
+    return _currentUserName ?? '';
   }
 
   //// Sign In API
