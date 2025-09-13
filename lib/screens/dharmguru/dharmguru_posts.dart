@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../services/user_service.dart';
 import '../../services/comments_service.dart';
+import 'package:video_player/video_player.dart';
 
 class DharmguruPosts extends StatefulWidget {
   final String guruId;
@@ -13,11 +14,31 @@ class DharmguruPosts extends StatefulWidget {
 }
 
 class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAliveClientMixin {
+  // For video controls visibility
+  Map<String, bool> _showVideoControls = {};
+    // Helper for video controls auto-hide
+    void showControls(String videoKey) {
+      setState(() {
+        _showVideoControls[videoKey] = true;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _showVideoControls[videoKey] = false;
+          });
+        }
+      });
+    }
   List<dynamic>? posts;
   bool isLoading = true;
   String? error;
   Map<String, PageController> _pageControllers = {};
   Map<String, int> _currentPages = {};
+  Map<String, VideoPlayerController?> _videoControllers = {};
+  
+  // Like state management (similar to your JS useState)
+  Map<String, int> _likeCounts = {}; // postId -> likeCount
+  Map<String, bool> _likeStatuses = {}; // postId -> isLiked
   Set<String> _likingPosts = {}; // Track posts currently being liked/unliked
 
   @override
@@ -41,7 +62,6 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
           posts = data is List ? data : data['posts'] ?? [];
           isLoading = false;
         });
-        print('Fetched ${posts?.length ?? 0} posts for dharmguru ${widget.guruId}');
       } else {
         setState(() {
           error = 'Failed to load posts: ${response.statusCode}';
@@ -56,13 +76,32 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     }
   }
 
-  Widget _buildPostCard(Map<String, dynamic> post) {
+  // Fetch like status and count (similar to your useEffect)
+  Future<void> _fetchLikeStatus(String postId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId'),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final userService = UserService();
+        final currentUserId = userService.getDefaultUserId();
+        final likes = data['likes'] is List ? data['likes'] as List : [];
+        
+        setState(() {
+          _likeCounts[postId] = likes.length;
+          _likeStatuses[postId] = likes.contains(currentUserId);
+        });
+      }
+        } catch (e) {
+      print('Error fetching like status for post $postId: $e');
+    }
+  }  Widget _buildPostCard(Map<String, dynamic> post) {
     final postId = post['id'] ?? '';
     final caption = post['caption'] ?? '';
     final createdAt = post['createdAt'] ?? '';
     final userType = post['userType'] ?? '';
-    final likesList = post['likes'] is List ? post['likes'] as List : [];
-    final likesCount = likesList.length;
     final mediaList = post['media'] is List ? post['media'] as List : [];
     
     // Handle comment count - try different possible field names
@@ -70,27 +109,20 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                          post['commentCount'] ?? 
                          (post['comments'] is List ? (post['comments'] as List).length : 0);
     
-    // Debug print to see the actual post structure
-    print('Post structure for debugging:');
-    print('- Post ID: $postId');
-    print('- Likes: $likesCount');
-    print('- Comments count: $commentsCount');
-    print('- Available fields: ${post.keys.toList()}');
+    // Initialize like state for this post if not exists (similar to useEffect)
+    if (!_likeCounts.containsKey(postId)) {
+      _fetchLikeStatus(postId);
+    }
     
-    // Get current user ID from UserService
-    final userService = UserService();
-    final currentUserId = userService.getDefaultUserId();
-    final isLiked = likesList.contains(currentUserId);
+    // Get like state from our maps (similar to your useState)
+    final likesCount = _likeCounts[postId] ?? 0;
+    final isLiked = _likeStatuses[postId] ?? false;
     
     // Initialize page controller for this post if not exists
     if (!_pageControllers.containsKey(postId)) {
       _pageControllers[postId] = PageController();
       _currentPages[postId] = 0;
     }
-    
-    // Debug print to see the post structure
-    print('Post data: $post');
-    print('Media count: ${mediaList.length}');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -100,7 +132,7 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
         children: [
           // Post Images - Show multiple images with navigation
           if (mediaList.isNotEmpty)
-            Container(
+            SizedBox(
               height: 200,
               child: Stack(
                 children: [
@@ -116,57 +148,130 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                     itemBuilder: (context, index) {
                       final mediaUrl = mediaList[index]['url'] ?? '';
                       final mediaType = mediaList[index]['type'] ?? 'image';
-                      
-                      return ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8.0)),
-                        child: mediaType == 'video'
-                          ? Container(
-                              color: Colors.black,
-                              child: Center(
-                                child: Column(
+                      if (mediaType == 'video' && mediaUrl.isNotEmpty) {
+                        // Initialize video controller if not exists
+                        final videoKey = '$postId-$index';
+                        if (_videoControllers[videoKey] == null) {
+                          _videoControllers[videoKey] = VideoPlayerController.network(mediaUrl)
+                            ..initialize().then((_) {
+                              setState(() {});
+                            })
+                            ..addListener(() {
+                              // Update progress bar in real time
+                              if (mounted) setState(() {});
+                            });
+                        }
+                        final controller = _videoControllers[videoKey];
+                        _showVideoControls.putIfAbsent(videoKey, () => false);
+                        if (controller != null && controller.value.isInitialized) {
+                          return ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(8.0)),
+                            child: GestureDetector(
+                              onTap: () => showControls(videoKey),
+                              child: Stack(
+                                children: [
+                                  AspectRatio(
+                                    aspectRatio: controller.value.aspectRatio,
+                                    child: VideoPlayer(controller),
+                                  ),
+                                  // Minimal centered play/pause button
+                                  if (_showVideoControls[videoKey] ?? false)
+                                    Center(
+                                      child: IconButton(
+                                        icon: Icon(
+                                          controller.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
+                                          color: Colors.white,
+                                          size: 36,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            controller.value.isPlaying ? controller.pause() : controller.play();
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  // Minimal progress bar with better styling
+                                  if (_showVideoControls[videoKey] ?? false)
+                                    Positioned(
+                                      bottom: 12,
+                                      left: 16,
+                                      right: 16,
+                                      child: Container(
+                                        height: 20,
+                                        child: SliderTheme(
+                                          data: SliderTheme.of(context).copyWith(
+                                            trackHeight: 3,
+                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                                            activeTrackColor: Colors.white,
+                                            inactiveTrackColor: Colors.white.withOpacity(0.3),
+                                            thumbColor: Colors.white,
+                                            overlayColor: Colors.white.withOpacity(0.2),
+                                          ),
+                                          child: Slider(
+                                            value: controller.value.position.inMilliseconds.toDouble().clamp(
+                                              0.0, 
+                                              controller.value.duration.inMilliseconds.toDouble()
+                                            ),
+                                            min: 0,
+                                            max: controller.value.duration.inMilliseconds.toDouble(),
+                                            onChanged: (value) {
+                                              controller.seekTo(Duration(milliseconds: value.toInt()));
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        } else {
+                          return Container(
+                            color: Colors.black,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                      } else {
+                        return ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8.0)),
+                          child: Image.network(
+                            mediaUrl,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return SizedBox(
+                                height: 200,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 200,
+                                color: Colors.grey.shade300,
+                                child: const Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.play_circle_fill, size: 64, color: Colors.white),
+                                    Icon(Icons.image_not_supported, size: 50),
                                     SizedBox(height: 8),
-                                    Text('Video', style: TextStyle(color: Colors.white)),
+                                    Text('Failed to load image', style: TextStyle(color: Colors.grey)),
                                   ],
                                 ),
-                              ),
-                            )
-                          : Image.network(
-                              mediaUrl,
-                              width: double.infinity,
-                              height: 200,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  height: 200,
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                          : null,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  height: 200,
-                                  color: Colors.grey.shade300,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.image_not_supported, size: 50),
-                                      const SizedBox(height: 8),
-                                      Text('Failed to load image', style: TextStyle(color: Colors.grey)),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                      );
+                              );
+                            },
+                          ),
+                        );
+                      }
                     },
                   ),
                   
@@ -187,6 +292,7 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.chevron_left, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
                             onPressed: () {
                               final currentPage = _currentPages[postId] ?? 0;
                               if (currentPage > 0) {
@@ -216,6 +322,7 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
                             onPressed: () {
                               final currentPage = _currentPages[postId] ?? 0;
                               if (currentPage < mediaList.length - 1) {
@@ -264,7 +371,7 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                 color: Colors.grey.shade200,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(8.0)),
               ),
-              child: Center(
+              child: const Center(
                 child: Text(
                   'No images available',
                   style: TextStyle(color: Colors.grey),
@@ -282,27 +389,36 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                   children: [
                     // Like button and count
                     GestureDetector(
-                      onTap: () {
-                        // Add haptic feedback for better user experience
+                      onTap: _likingPosts.contains(postId) ? null : () {
                         _toggleLike(postId, isLiked);
                       },
                       child: Row(
                         children: [
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              isLiked ? Icons.favorite : Icons.favorite_border,
-                              key: ValueKey(isLiked),
-                              color: isLiked ? Colors.red : Colors.grey,
-                              size: 24,
-                            ),
+                            child: _likingPosts.contains(postId)
+                              ? SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                                  ),
+                                )
+                              : Icon(
+                                  isLiked ? Icons.favorite : Icons.favorite_border,
+                                  key: ValueKey(isLiked),
+                                  color: isLiked ? Colors.red : Colors.grey,
+                                  size: 24,
+                                ),
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '$likesCount',
-                            style: const TextStyle(
+                            '$likesCount likes',
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
+                              color: _likingPosts.contains(postId) ? Colors.grey : Colors.black,
                             ),
                           ),
                         ],
@@ -436,10 +552,10 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     }
   }
 
+  // Handle like (similar to your handleLike function)
   Future<void> _toggleLike(String postId, bool isCurrentlyLiked) async {
-    // Prevent multiple rapid taps on the same post
+    // Prevent multiple rapid taps on the same post (similar to likeLoading state)
     if (_likingPosts.contains(postId)) {
-      print('Like request already in progress for post $postId');
       return;
     }
     
@@ -448,59 +564,48 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     final userService = UserService();
     final currentUserId = userService.getDefaultUserId();
     
-    print('Toggle Like Debug:');
-    print('- Post ID: $postId');
-    print('- User ID: $currentUserId');
-    print('- Currently Liked: $isCurrentlyLiked');
-    
-    // Send API request FIRST, then update UI only on success
     try {
-      final response = await http.post(
-        Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'userId': currentUserId,
-          'action': isCurrentlyLiked ? 'unlike' : 'like',
-        }),
-      );
+      // Use DELETE for unlike, POST for like (same as your JS code)
+      final response = isCurrentlyLiked 
+        ? await http.delete(
+            Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'userId': currentUserId}),
+          )
+        : await http.post(
+            Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'userId': currentUserId}),
+          );
       
-      print('API Response: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print('API success - updating UI');
-        // Only update UI after API confirms success
+      // If DELETE is not supported, fall back to POST with action
+      if (response.statusCode == 405 || response.statusCode == 404) {
+        final fallbackResponse = await http.post(
+          Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'userId': currentUserId,
+            'action': isCurrentlyLiked ? 'unlike' : 'like',
+          }),
+        );
+        
+        if (fallbackResponse.statusCode == 200 || fallbackResponse.statusCode == 201) {
+          final data = json.decode(fallbackResponse.body);
+          setState(() {
+            _likeCounts[postId] = data['likes'].length;
+            _likeStatuses[postId] = !isCurrentlyLiked;
+          });
+        }
+      } else if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
         setState(() {
-          if (posts != null) {
-            for (var post in posts!) {
-              if (post['id'] == postId) {
-                List<dynamic> likes = List.from(post['likes'] ?? []);
-                
-                if (isCurrentlyLiked) {
-                  // Unlike - remove user ID
-                  likes.removeWhere((id) => id == currentUserId);
-                  print('UNLIKE: Removed user from likes. New count: ${likes.length}');
-                } else {
-                  // Like - add user ID (only if not already there)
-                  if (!likes.contains(currentUserId)) {
-                    likes.add(currentUserId);
-                    print('LIKE: Added user to likes. New count: ${likes.length}');
-                  }
-                }
-                
-                post['likes'] = likes;
-                break;
-              }
-            }
-          }
+          _likeCounts[postId] = data['likes'].length;
+          _likeStatuses[postId] = !isCurrentlyLiked;
         });
-      } else {
-        print('API failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('API Error: $e');
+      print('Error toggling like: $e');
     } finally {
-      // Always remove from the set when done
       _likingPosts.remove(postId);
     }
   }
@@ -515,7 +620,6 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     try {
       comments = await CommentsService.fetchComments(postId);
       isLoading = false;
-      print('Fetched ${comments.length} comments for post $postId');
     } catch (e) {
       print('Error fetching comments: $e');
       errorMessage = 'Unable to load comments';
@@ -728,6 +832,10 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     // Dispose all page controllers
     for (var controller in _pageControllers.values) {
       controller.dispose();
+    }
+    // Dispose all video controllers
+    for (var controller in _videoControllers.values) {
+      controller?.dispose();
     }
     super.dispose();
   }
