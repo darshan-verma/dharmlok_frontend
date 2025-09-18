@@ -7,7 +7,7 @@ import 'package:chewie/chewie.dart';
 
 class DharmguruVideos extends StatefulWidget {
   final String guruId;
-  const DharmguruVideos({Key? key, required this.guruId}) : super(key: key);
+  const DharmguruVideos({super.key, required this.guruId});
 
   @override
   State<DharmguruVideos> createState() => _DharmguruVideosState();
@@ -29,25 +29,17 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
 
   Future<void> fetchVideos() async {
     try {
-      print('Fetching videos for guruId: ${widget.guruId}');
       final response = await http.get(
         Uri.parse('https://darshan-dharmlok.vercel.app/api/users/${widget.guruId}'),
       );
 
-      print('Videos API Status: ${response.statusCode}');
-      print('Videos API Response length: ${response.body.length} characters');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // Handle videos array
         if (data['videos'] != null && data['videos'] is List) {
           videos = data['videos'];
-          print('Found ${videos!.length} videos in videos array');
         } else {
           videos = [];
-          print('No videos field found in response');
         }
-        print('Videos loaded: ${videos?.length ?? 0}');
         setState(() {
           isLoading = false;
         });
@@ -58,12 +50,31 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
         });
       }
     } catch (e) {
-      print('Error fetching videos: $e');
       setState(() {
         error = 'Error loading videos: $e';
         isLoading = false;
       });
     }
+  }
+
+  void _showVideoPopup(BuildContext context, String videoUrl, String title) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withOpacity(0.8),
+        pageBuilder: (context, animation, _) {
+          return FadeTransition(
+            opacity: animation,
+            child: VideoPopupPlayer(
+              key: ValueKey('video_popup_${videoUrl}_${DateTime.now().millisecondsSinceEpoch}'),
+              videoUrl: videoUrl,
+              title: title,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -137,7 +148,6 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Responsive grid configuration
           int crossAxisCount = 2;
           double childAspectRatio = 0.8;
           
@@ -150,6 +160,7 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
           }
           
           return GridView.builder(
+            key: ValueKey('video_grid_${videos!.length}'),
             padding: const EdgeInsets.all(16.0),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
@@ -160,18 +171,15 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
             itemCount: videos!.length,
             itemBuilder: (context, index) {
               final video = videos![index];
-              final thumbnailUrl = video['thumbnailUrl'] ?? '';
               final videoUrl = video['videoFile'] ?? '';
               final title = video['title'] ?? '';
               final description = video['description'] ?? '';
-              final status = video['status'] ?? 'pending';
 
               return VideoCard(
-                thumbnailUrl: thumbnailUrl,
+                key: ValueKey('video_card_${index}_${videoUrl}_${title}'),
                 videoUrl: videoUrl,
                 title: title,
                 description: description,
-                status: status,
                 onTap: videoUrl.isNotEmpty 
                     ? () => _showVideoPopup(context, videoUrl, title)
                     : null,
@@ -182,107 +190,81 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
       ),
     );
   }
-
-  void _showVideoPopup(BuildContext context, String videoUrl, String title) {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierDismissible: true,
-        barrierColor: Colors.black.withOpacity(0.8),
-        pageBuilder: (context, animation, _) {
-          return FadeTransition(
-            opacity: animation,
-            child: VideoPopupPlayer(
-              videoUrl: videoUrl,
-              title: title,
-            ),
-          );
-        },
-      ),
-    );
-  }
 }
 
-// Enhanced Video Card Widget
+// Video Card Widget with Video Preview
 class VideoCard extends StatefulWidget {
-  final String thumbnailUrl;
   final String videoUrl;
   final String title;
   final String description;
-  final String status;
   final VoidCallback? onTap;
 
   const VideoCard({
-    Key? key,
-    required this.thumbnailUrl,
+    super.key,
     required this.videoUrl,
     required this.title,
     required this.description,
-    required this.status,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   State<VideoCard> createState() => _VideoCardState();
 }
 
 class _VideoCardState extends State<VideoCard> {
-  VideoPlayerController? _videoController;
-  bool _isVideoLoading = false;
-  String? _videoError;
+  VideoPlayerController? _previewController;
+  bool _isPreviewLoading = true;
+  bool _previewError = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.thumbnailUrl.isEmpty && widget.videoUrl.isNotEmpty) {
-      _initializeVideoController();
+    if (widget.videoUrl.isNotEmpty) {
+      _initializePreview();
+    } else {
+      setState(() {
+        _isPreviewLoading = false;
+        _previewError = true;
+      });
     }
   }
 
-  @override
-  void didUpdateWidget(VideoCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.thumbnailUrl != oldWidget.thumbnailUrl || 
-        widget.videoUrl != oldWidget.videoUrl) {
-      _disposeController();
-      if (widget.thumbnailUrl.isEmpty && widget.videoUrl.isNotEmpty) {
-        _initializeVideoController();
+  Future<void> _initializePreview() async {
+    try {
+      _previewController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+        httpHeaders: {
+          'User-Agent': 'DharmlokApp/1.0',
+          'Range': 'bytes=0-1024', // Only load first few bytes for preview
+        },
+      );
+      
+      await _previewController!.initialize().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw Exception('Preview timeout'),
+      );
+      
+      // Seek to a frame a few seconds in to get a better preview
+      await _previewController!.seekTo(const Duration(seconds: 2));
+      
+      if (mounted) {
+        setState(() {
+          _isPreviewLoading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isPreviewLoading = false;
+          _previewError = true;
+        });
       }
     }
   }
 
-  Future<void> _initializeVideoController() async {
-    if (_videoController != null) return;
-    
-    setState(() {
-      _isVideoLoading = true;
-      _videoError = null;
-    });
-
-    try {
-      _videoController = VideoPlayerController.network(widget.videoUrl);
-      await _videoController!.initialize();
-      // Seek to 1 second to get a frame (not the very first frame which might be black)
-      await _videoController!.seekTo(const Duration(seconds: 1));
-      setState(() {
-        _isVideoLoading = false;
-      });
-    } catch (error) {
-      setState(() {
-        _isVideoLoading = false;
-        _videoError = error.toString();
-      });
-    }
-  }
-
-  void _disposeController() {
-    _videoController?.dispose();
-    _videoController = null;
-  }
-
   @override
   void dispose() {
-    _disposeController();
+    _previewController?.dispose();
     super.dispose();
   }
 
@@ -306,42 +288,9 @@ class _VideoCardState extends State<VideoCard> {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16.0)),
-                    child: widget.thumbnailUrl.isNotEmpty
-                        ? Image.network(
-                            widget.thumbnailUrl,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: Colors.grey.shade100,
-                                child: const Center(
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildVideoPreview();
-                            },
-                          )
-                        : _buildVideoPreview(),
+                    child: _buildVideoPreview(),
                   ),
-                  // Gradient overlay for better play button visibility
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16.0)),
-                      gradient: LinearGradient(
-                        begin: Alignment.center,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.1),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Enhanced play button overlay
+                  // Play button overlay
                   if (widget.videoUrl.isNotEmpty)
                     Center(
                       child: Container(
@@ -411,17 +360,38 @@ class _VideoCardState extends State<VideoCard> {
   }
 
   Widget _buildVideoPreview() {
-    if (_isVideoLoading) {
+    if (_isPreviewLoading) {
       return Container(
+        width: double.infinity,
+        height: double.infinity,
         color: Colors.grey.shade100,
-        child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Loading Preview',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    if (_videoError != null || _videoController == null) {
+    if (_previewError || _previewController == null || !_previewController!.value.isInitialized) {
       return Container(
+        width: double.infinity,
+        height: double.infinity,
         color: Colors.grey.shade100,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -435,47 +405,69 @@ class _VideoCardState extends State<VideoCard> {
             Text(
               widget.title.isNotEmpty ? widget.title : 'Video Preview',
               style: TextStyle(
-                color: Colors.grey.shade500,
+                color: Colors.grey.shade600,
                 fontSize: 12,
-                fontWeight: widget.title.isNotEmpty ? FontWeight.w500 : FontWeight.normal,
+                fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'TAP TO PLAY',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox(
-        width: _videoController!.value.size.width,
-        height: _videoController!.value.size.height,
-        child: VideoPlayer(_videoController!),
+    // Show the first frame of the video as preview
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: _previewController!.value.size.width,
+          height: _previewController!.value.size.height,
+          child: VideoPlayer(_previewController!),
+        ),
       ),
     );
   }
 }
 
-// Enhanced Video Popup Player with Fullscreen Support
+// Simple Video Popup Player
 class VideoPopupPlayer extends StatefulWidget {
   final String videoUrl;
   final String title;
 
   const VideoPopupPlayer({
-    Key? key,
+    super.key,
     required this.videoUrl,
     required this.title,
-  }) : super(key: key);
+  });
 
   @override
   State<VideoPopupPlayer> createState() => _VideoPopupPlayerState();
 }
 
 class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
-  late VideoPlayerController _videoPlayerController;
+  VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool _isLoading = true;
   String? _errorMessage;
@@ -488,12 +480,26 @@ class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
 
   Future<void> _initializePlayer() async {
     try {
-      _videoPlayerController = VideoPlayerController.network(widget.videoUrl);
-      await _videoPlayerController.initialize();
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+        httpHeaders: {
+          'User-Agent': 'DharmlokApp/1.0',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      );
+      
+      // Add timeout to prevent excessive loading
+      await _videoPlayerController!.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Video loading timed out');
+        },
+      );
 
       _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController,
-        autoPlay: false,
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: false, // Don't autoplay to save bandwidth and load faster
         looping: false,
         allowFullScreen: true,
         allowMuting: true,
@@ -506,22 +512,30 @@ class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
         ),
         placeholder: Container(
           color: Colors.black,
-          child: const Center(
-            child: CircularProgressIndicator(),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.play_circle_outline,
+                  size: 64,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tap to Play',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         autoInitialize: true,
-        aspectRatio: _videoPlayerController.value.aspectRatio,
-        customControls: const MaterialControls(),
-        hideControlsTimer: const Duration(seconds: 3),
-        fullScreenByDefault: false,
-        deviceOrientationsAfterFullScreen: [
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ],
-        systemOverlaysAfterFullScreen: SystemUiOverlay.values,
+        aspectRatio: _videoPlayerController!.value.aspectRatio,
+        hideControlsTimer: const Duration(seconds: 2),
       );
 
       setState(() {
@@ -530,15 +544,17 @@ class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
     } catch (error) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to load video: $error';
+        _errorMessage = error.toString().contains('timed out') 
+            ? 'Video loading timed out. Please check your connection.'
+            : 'Failed to load video: ${error.toString().length > 50 ? error.toString().substring(0, 50) + "..." : error.toString()}';
       });
     }
   }
 
   @override
   void dispose() {
-    _videoPlayerController.dispose();
     _chewieController?.dispose();
+    _videoPlayerController?.dispose();
     super.dispose();
   }
 
@@ -567,7 +583,7 @@ class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
           ),
           child: Column(
             children: [
-              // Header with title and controls
+              // Header
               Container(
                 height: 60,
                 decoration: const BoxDecoration(
@@ -625,15 +641,34 @@ class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
 
   Widget _buildVideoPlayer() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Loading Video...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
-              'Loading video...',
-              style: TextStyle(color: Colors.white),
+              'Please wait',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
