@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_screen.dart';
 import 'package:dharmlok_frontend/widgets/custom_bottom_navbar.dart';
+import '../services/user_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,6 +44,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: const Icon(Icons.logout, color: Color(0xFF8B6F4E)),
+              onPressed: () async {
+                final userService = UserService();
+                await userService.logout();
+                Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+              },
+            ),
+          ),
+          Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -69,6 +81,34 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Session Status Card (for testing)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: FutureBuilder<String>(
+                  future: () async {
+                    final userService = UserService();
+                    return 'Session Active: ${userService.isLoggedIn ? "✅" : "❌"} | User: ${userService.currentUserName ?? "Unknown"}';
+                  }(),
+                  builder: (context, snapshot) {
+                    return Text(
+                      snapshot.data ?? 'Loading session status...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade800,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              
               // Search Bar
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

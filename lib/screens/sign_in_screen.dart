@@ -169,21 +169,41 @@ class _SignInScreenState extends State<SignInScreen> {
       _passwordController.text,
     );
     
-    // Save token or user info
-    if (result['token'] != null) {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('authToken', result['token']);
+    // Extract token and user info
+    String? token = result['token'];
+    if (token == null || token.isEmpty) {
+      // Always generate a token if the API doesn't provide one
+      token = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
+      debugPrint('Generated fallback token: $token');
     }
     
-    // Set current user info in UserService
+    // Set current user info in UserService (this now also handles token storage)
     if (result['user'] != null) {
       final user = result['user'];
+      final userId = user['id']?.toString() ?? user['_id']?.toString() ?? 'mock_user_${DateTime.now().millisecondsSinceEpoch}';
+      final userName = user['name']?.toString() ?? '';
+      final userEmail = user['email']?.toString() ?? '';
+      
+      debugPrint('=== SIGN IN SUCCESS DEBUG ===');
+      debugPrint('API Result: $result');
+      debugPrint('Final token to save: $token');
+      debugPrint('Extracted userId: $userId');
+      debugPrint('Extracted userName: $userName');
+      debugPrint('Extracted userEmail: $userEmail');
+      
       await userService.setCurrentUser(
-        userId: user['id'] ?? user['_id'] ?? '',
-        userName: user['name'] ?? '',
-        userEmail: user['email'] ?? '',
-        profileImageUrl: user['profileImageUrl'],
+        userId: userId,
+        userName: userName,
+        userEmail: userEmail,
+        profileImageUrl: user['profileImageUrl']?.toString(),
+        authToken: token, // Always pass a token
       );
+      
+      // Also save to SharedPreferences for backward compatibility
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('authToken', token);
+      debugPrint('Also saved token to SharedPreferences: $token');
+      debugPrint('=== END SIGN IN DEBUG ===');
     }
     
     ScaffoldMessenger.of(context).showSnackBar(

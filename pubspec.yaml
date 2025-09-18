@@ -69,7 +69,7 @@ flutter:
   assets:
     - .env
     - assets/images/dharmlok_logo.svg
-    - assets/images/corner_vector.png
+    - assets/images/corner_vector.svg
     - assets/images/google.png
     - assets/images/facebook.png
     - assets/images/om.png

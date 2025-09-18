@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SelectReligionScreen extends StatelessWidget {
   const SelectReligionScreen({super.key});
+
+  Future<void> _selectReligion(BuildContext context, String religion) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedReligion', religion);
+    debugPrint('Selected religion saved: $religion');
+    Navigator.pushNamed(context, '/sign-in');
+  }
+
+  Future<void> _skipReligion(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedReligion', 'skipped');
+    debugPrint('Religion selection skipped');
+    Navigator.pushNamed(context, '/sign-in');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,19 +47,19 @@ class SelectReligionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               ReligionOption(title: 'Sanatan', iconPath: 'assets/images/om.png', onTap: () {
-                Navigator.pushNamed(context, '/sign-in');
+                _selectReligion(context, 'Sanatan');
               }),
               const SizedBox(height: 16),
               ReligionOption(title: 'Buddhism', iconPath: 'assets/images/buddhism.png', onTap: () {
-                Navigator.pushNamed(context, '/sign-in');
+                _selectReligion(context, 'Buddhism');
               }),
               const SizedBox(height: 16),
               ReligionOption(title: 'Sikh', iconPath: 'assets/images/sikh-symbol.png', onTap: () {
-                Navigator.pushNamed(context, '/sign-in');
+                _selectReligion(context, 'Sikh');
               }),
               const SizedBox(height: 16),
               ReligionOption(title: 'Jain', iconPath: 'assets/images/jainism.png', onTap: () {
-                Navigator.pushNamed(context, '/sign-in');
+                _selectReligion(context, 'Jain');
               }),
               const Spacer(),
               Row(
@@ -52,7 +67,7 @@ class SelectReligionScreen extends StatelessWidget {
                 children: [
                   TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/sign-in');
+                      _skipReligion(context);
                     },
                     child: const Text(
                       'Skip',

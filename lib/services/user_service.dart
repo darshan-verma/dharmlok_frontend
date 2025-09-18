@@ -8,6 +8,7 @@ class UserService {
   final String baseUrl = dotenv.env['API_URL'] ?? "";
   
   // User session management
+  static const String _authTokenKey = 'authToken';
   static const String _userIdKey = 'current_user_id';
   static const String _userNameKey = 'current_user_name';
   static const String _userEmailKey = 'current_user_email';
@@ -18,6 +19,7 @@ class UserService {
   factory UserService() => _instance;
   UserService._internal();
   
+  String? _authToken;
   String? _currentUserId;
   String? _currentUserName;
   String? _currentUserEmail;
@@ -30,19 +32,30 @@ class UserService {
   bool get isMockMode => dotenv.env['API_URL'] == null || dotenv.env['API_URL']!.isEmpty;
   
   // User session getters
+  String? get authToken => _authToken;
   String? get currentUserId => _currentUserId;
   String? get currentUserName => _currentUserName;
   String? get currentUserEmail => _currentUserEmail;
   String? get currentUserProfileImage => _currentUserProfileImage;
-  bool get isLoggedIn => _currentUserId != null;
+  bool get isLoggedIn => _authToken != null && _authToken!.isNotEmpty && _currentUserId != null;
   
   // Initialize user service and load stored user data
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
+    _authToken = prefs.getString(_authTokenKey);
     _currentUserId = prefs.getString(_userIdKey);
     _currentUserName = prefs.getString(_userNameKey);
     _currentUserEmail = prefs.getString(_userEmailKey);
     _currentUserProfileImage = prefs.getString(_userProfileImageKey);
+    
+    // Debug logging
+    debugPrint('=== UserService INITIALIZATION ===');
+    debugPrint('Loaded authToken: $_authToken');
+    debugPrint('Loaded userId: $_currentUserId');
+    debugPrint('Loaded userName: $_currentUserName');
+    debugPrint('Loaded userEmail: $_currentUserEmail');
+    debugPrint('isLoggedIn: $isLoggedIn');
+    debugPrint('=== END INITIALIZATION ===');
   }
   
   // Set current user (call this after login)
@@ -51,6 +64,7 @@ class UserService {
     required String userName,
     required String userEmail,
     String? profileImageUrl,
+    String? authToken,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     
@@ -59,27 +73,53 @@ class UserService {
     _currentUserEmail = userEmail;
     _currentUserProfileImage = profileImageUrl;
     
+    // ALWAYS set the token - either the provided one or generate a session token
+    if (authToken != null) {
+      _authToken = authToken;
+      await prefs.setString(_authTokenKey, authToken);
+    } else {
+      // If no token provided, generate a session token for authentication
+      final sessionToken = 'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
+      _authToken = sessionToken;
+      await prefs.setString(_authTokenKey, sessionToken);
+    }
+    
     await prefs.setString(_userIdKey, userId);
     await prefs.setString(_userNameKey, userName);
     await prefs.setString(_userEmailKey, userEmail);
     if (profileImageUrl != null) {
       await prefs.setString(_userProfileImageKey, profileImageUrl);
     }
+    
+    debugPrint('=== UserService.setCurrentUser DEBUG ===');
+    debugPrint('Set userId: $_currentUserId');
+    debugPrint('Set userName: $_currentUserName');
+    debugPrint('Set authToken: $_authToken');
+    debugPrint('isLoggedIn after set: $isLoggedIn');
+    debugPrint('=== END setCurrentUser DEBUG ===');
   }
   
   // Clear user data (call this on logout)
   Future<void> clearUser() async {
     final prefs = await SharedPreferences.getInstance();
     
+    _authToken = null;
     _currentUserId = null;
     _currentUserName = null;
     _currentUserEmail = null;
     _currentUserProfileImage = null;
     
+    await prefs.remove(_authTokenKey);
     await prefs.remove(_userIdKey);
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userProfileImageKey);
+  }
+  
+  // Logout method
+  Future<void> logout() async {
+    await clearUser();
+    // Additional logout logic can be added here (like calling logout API)
   }
   
   // Get current user ID (returns empty string if not logged in)
