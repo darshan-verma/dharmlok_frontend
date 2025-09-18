@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_bio.dart';
 import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_posts.dart';
+import 'package:dharmlok_frontend/screens/dharmguru/dharmguru.videos.dart';
+import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_photos.dart';
 
 class DharmguruDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> guru;
@@ -193,9 +195,9 @@ class _DharmguruDetailsScreenState extends State<DharmguruDetailsScreen> with Si
                 // Posts Tab
                 DharmguruPosts(guruId: widget.guru['id']),
                 // Videos Tab
-                const Center(child: Text('Videos', style: TextStyle(fontSize: 16))),
+                DharmguruVideos(guruId: widget.guru['id']),
                 // Photos Tab
-                const Center(child: Text('Photos', style: TextStyle(fontSize: 16))),
+                DharmguruPhotos(guruId: widget.guru['id']),
               ],
             ),
           ),

@@ -23,27 +23,42 @@ class _DharmguruScreenState extends State<DharmguruScreen> {
 
   Future<void> fetchDharmgurus() async {
   try {
-    final response = await http.get(Uri.parse('https://darshan-dharmlok.vercel.app/api/users'));
+    // Try the users endpoint with userType filter
+    final response = await http.get(
+      Uri.parse('https://darshan-dharmlok.vercel.app/api/users?userType=Dharmguru'),
+    );
+    
+    print('Dharmguru API Status: ${response.statusCode}');
+    print('Dharmguru API Response: ${response.body}');
+    
     if (response.statusCode == 200) {
       final decoded = json.decode(response.body);
-      List<dynamic> allUsers = [];
+      // Adjust this depending on your API response structure
+      List<dynamic> dharmgurus;
       if (decoded is Map && decoded.containsKey('users')) {
-        allUsers = decoded['users'] ?? [];
+        dharmgurus = decoded['users'];
+      } else if (decoded is Map && decoded.containsKey('dharmgurus')) {
+        dharmgurus = decoded['dharmgurus'];
       } else if (decoded is List) {
-        allUsers = decoded;
+        dharmgurus = decoded;
+      } else {
+        dharmgurus = [];
       }
-      List<dynamic> filtered = allUsers.where((user) => user['userType'] == 'Dharmguru').toList();
+      
+      print('Parsed ${dharmgurus.length} dharmgurus');
+      
       setState(() {
-        gurus = filtered;
+        gurus = dharmgurus;
         isLoading = false;
       });
     } else {
       setState(() {
-        error = 'Failed to load users';
+        error = 'Failed to load dharmgurus: ${response.statusCode} - ${response.body}';
         isLoading = false;
       });
     }
   } catch (e) {
+    print('Error fetching dharmgurus: $e');
     setState(() {
       error = e.toString();
       isLoading = false;
@@ -59,6 +74,14 @@ class _DharmguruScreenState extends State<DharmguruScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  String _formatAddress(Map<String, dynamic> address) {
+    List<String> parts = [];
+    if (address['city'] != null) parts.add(address['city']);
+    if (address['state'] != null) parts.add(address['state']);
+    if (address['country'] != null) parts.add(address['country']);
+    return parts.join(', ');
   }
 
   @override
@@ -190,9 +213,9 @@ class _DharmguruScreenState extends State<DharmguruScreen> {
                                             color: Color(0xFF2B1E0A),
                                           ),
                                         ),
-                                        if (guru["address"] != null)
+                                        if (guru["addresses"] != null && (guru["addresses"] as List).isNotEmpty)
                                           Text(
-                                            guru["address"],
+                                            _formatAddress(guru["addresses"][0]),
                                             style: TextStyle(
                                               fontSize: 14,
                                               color: Color(0xFF8B5C2D),
