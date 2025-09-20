@@ -1,4 +1,3 @@
-import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_screen.dart';
 import 'package:dharmlok_frontend/screens/select_religion_screen.dart';
 import 'package:dharmlok_frontend/screens/sign_up_screen.dart';
 import 'package:dharmlok_frontend/services/user_service.dart';
@@ -44,7 +43,6 @@ class DharmlokApp extends StatelessWidget {
         '/select-religion': (context) => const SelectReligionScreen(),
         '/sign-in': (context) => const SignInScreen(),
         '/sign-up': (context) => const SignUpScreen(),
-        '/dharmguru': (context) => DharmguruScreen(),
         '/events': (context) => EventBookingScreen(),
         '/community': (context) => CommunityScreen(),
         '/profile': (context) => ProfileScreen(),

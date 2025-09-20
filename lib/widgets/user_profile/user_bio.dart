@@ -1,49 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../../services/user_api_service.dart';
+import '../../config/user_type_config.dart';
 
-class DharmguruBio extends StatefulWidget {
-  final String guruId;
-  const DharmguruBio({Key? key, required this.guruId}) : super(key: key);
+class UserBio extends StatefulWidget {
+  final String userId;
+  final UserType userType;
+  
+  const UserBio({
+    Key? key, 
+    required this.userId,
+    required this.userType,
+  }) : super(key: key);
 
   @override
-  State<DharmguruBio> createState() => _DharmguruBioState();
+  State<UserBio> createState() => _UserBioState();
 }
 
-class _DharmguruBioState extends State<DharmguruBio> {
+class _UserBioState extends State<UserBio> {
   List<dynamic>? bio;
   bool isLoading = true;
   String? error;
+  late UserApiService apiService;
 
   @override
   void initState() {
     super.initState();
+    apiService = UserApiService.forUserType(widget.userType);
     fetchBiography();
   }
 
   Future<void> fetchBiography() async {
     try {
-      final response = await http.get(Uri.parse('https://darshan-dharmlok.vercel.app/api/users/${widget.guruId}'));
-      if (response.statusCode == 200) {
-        final guruData = json.decode(response.body);
-        setState(() {
-          final bioData = guruData['bio'];
-          if(bioData is String && bioData.isNotEmpty) {
-            bio = json.decode(bioData);
-            }else if (bioData is List) {
-            bio = bioData;
-          } else {
-            bio = [];
-          }
-          isLoading = false;
-        });
-        print('Fetched biography: $bio');
-      } else {
-        setState(() {
-          error = 'Failed to load biography';
-          isLoading = false;
-        });
-      }
+      final bioData = await apiService.fetchBiography(widget.userId);
+      setState(() {
+        bio = bioData ?? [];
+        isLoading = false;
+      });
+      print('Fetched biography: $bio');
     } catch (e) {
       setState(() {
         error = e.toString();
@@ -66,7 +59,7 @@ class _DharmguruBioState extends State<DharmguruBio> {
 
     return ListView.builder(
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: bio!.length,
       itemBuilder: (context, index) {
         final bioItem = bio![index];
@@ -289,4 +282,3 @@ class _DharmguruBioState extends State<DharmguruBio> {
     }
   }
 }
-

@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import '../../services/user_api_service.dart';
+import '../../config/user_type_config.dart';
 
-class DharmguruVideos extends StatefulWidget {
-  final String guruId;
-  const DharmguruVideos({super.key, required this.guruId});
+class UserVideos extends StatefulWidget {
+  final String userId;
+  final UserType userType;
+  
+  const UserVideos({
+    super.key, 
+    required this.userId,
+    required this.userType,
+  });
 
   @override
-  State<DharmguruVideos> createState() => _DharmguruVideosState();
+  State<UserVideos> createState() => _UserVideosState();
 }
 
-class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAliveClientMixin {
+class _UserVideosState extends State<UserVideos> with AutomaticKeepAliveClientMixin {
   List<dynamic>? videos;
   bool isLoading = true;
   String? error;
+  late UserApiService apiService;
+  late UserTypeConfig config;
 
   @override
   bool get wantKeepAlive => true;
@@ -24,31 +32,18 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
   @override
   void initState() {
     super.initState();
+    config = UserTypeConfig.getConfig(widget.userType);
+    apiService = UserApiService.forUserType(widget.userType);
     fetchVideos();
   }
 
   Future<void> fetchVideos() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://darshan-dharmlok.vercel.app/api/users/${widget.guruId}'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['videos'] != null && data['videos'] is List) {
-          videos = data['videos'];
-        } else {
-          videos = [];
-        }
-        setState(() {
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          error = 'Failed to load videos: ${response.statusCode}';
-          isLoading = false;
-        });
-      }
+      final videosData = await apiService.fetchVideos(widget.userId);
+      setState(() {
+        videos = videosData ?? [];
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
         error = 'Error loading videos: $e';
@@ -70,6 +65,7 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
               key: ValueKey('video_popup_${videoUrl}_${DateTime.now().millisecondsSinceEpoch}'),
               videoUrl: videoUrl,
               title: title,
+              config: config,
             ),
           );
         },
@@ -180,6 +176,7 @@ class _DharmguruVideosState extends State<DharmguruVideos> with AutomaticKeepAli
                 videoUrl: videoUrl,
                 title: title,
                 description: description,
+                config: config,
                 onTap: videoUrl.isNotEmpty 
                     ? () => _showVideoPopup(context, videoUrl, title)
                     : null,
@@ -197,6 +194,7 @@ class VideoCard extends StatefulWidget {
   final String videoUrl;
   final String title;
   final String description;
+  final UserTypeConfig config;
   final VoidCallback? onTap;
 
   const VideoCard({
@@ -204,6 +202,7 @@ class VideoCard extends StatefulWidget {
     required this.videoUrl,
     required this.title,
     required this.description,
+    required this.config,
     this.onTap,
   });
 
@@ -455,11 +454,13 @@ class _VideoCardState extends State<VideoCard> {
 class VideoPopupPlayer extends StatefulWidget {
   final String videoUrl;
   final String title;
+  final UserTypeConfig config;
 
   const VideoPopupPlayer({
     super.key,
     required this.videoUrl,
     required this.title,
+    required this.config,
   });
 
   @override
@@ -505,8 +506,8 @@ class _VideoPopupPlayerState extends State<VideoPopupPlayer> {
         allowMuting: true,
         showControls: true,
         materialProgressColors: ChewieProgressColors(
-          playedColor: Theme.of(context).primaryColor,
-          handleColor: Theme.of(context).primaryColor,
+          playedColor: widget.config.primaryColor,
+          handleColor: widget.config.primaryColor,
           backgroundColor: Colors.grey.shade300,
           bufferedColor: Colors.grey.shade400,
         ),

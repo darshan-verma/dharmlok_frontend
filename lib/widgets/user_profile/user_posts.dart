@@ -1,76 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:video_player/video_player.dart';
+import '../../services/user_api_service.dart';
 import '../../services/user_service.dart';
 import '../../services/comments_service.dart';
-import 'package:video_player/video_player.dart';
+import '../../config/user_type_config.dart';
 
-class DharmguruPosts extends StatefulWidget {
-  final String guruId;
-  const DharmguruPosts({Key? key, required this.guruId}) : super(key: key);
+class UserPosts extends StatefulWidget {
+  final String userId;
+  final UserType userType;
+  
+  const UserPosts({
+    Key? key, 
+    required this.userId,
+    required this.userType,
+  }) : super(key: key);
 
   @override
-  State<DharmguruPosts> createState() => _DharmguruPostsState();
+  State<UserPosts> createState() => _UserPostsState();
 }
 
-class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAliveClientMixin {
+class _UserPostsState extends State<UserPosts> with AutomaticKeepAliveClientMixin {
   // For video controls visibility
   Map<String, bool> _showVideoControls = {};
-    // Helper for video controls auto-hide
-    void showControls(String videoKey) {
-      setState(() {
-        _showVideoControls[videoKey] = true;
-      });
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            _showVideoControls[videoKey] = false;
-          });
-        }
-      });
-    }
+  
+  // Helper for video controls auto-hide
+  void showControls(String videoKey) {
+    setState(() {
+      _showVideoControls[videoKey] = true;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showVideoControls[videoKey] = false;
+        });
+      }
+    });
+  }
+
   List<dynamic>? posts;
   bool isLoading = true;
   String? error;
+  late UserApiService apiService;
+  late UserTypeConfig config;
   Map<String, PageController> _pageControllers = {};
   Map<String, int> _currentPages = {};
   Map<String, VideoPlayerController?> _videoControllers = {};
   
-  // Like state management (similar to your JS useState)
-  Map<String, int> _likeCounts = {}; // postId -> likeCount
-  Map<String, bool> _likeStatuses = {}; // postId -> isLiked
-  Set<String> _likingPosts = {}; // Track posts currently being liked/unliked
+  // Like state management
+  Map<String, int> _likeCounts = {};
+  Map<String, bool> _likeStatuses = {};
+  Set<String> _likingPosts = {};
   
   // Comment count state management
-  Map<String, int> _commentCounts = {}; // postId -> commentCount
+  Map<String, int> _commentCounts = {};
 
   @override
-  bool get wantKeepAlive => true; // This prevents the widget from being recreated
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    config = UserTypeConfig.getConfig(widget.userType);
+    apiService = UserApiService.forUserType(widget.userType);
     fetchPosts();
   }
 
   Future<void> fetchPosts() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://darshan-dharmlok.vercel.app/api/posts?userId=${widget.guruId}&userType=dharmguru'),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          posts = data is List ? data : data['posts'] ?? [];
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          error = 'Failed to load posts: ${response.statusCode}';
-          isLoading = false;
-        });
-      }
+      final postsData = await apiService.fetchPosts(widget.userId);
+      setState(() {
+        posts = postsData ?? [];
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
         error = 'Error loading posts: $e';
@@ -79,25 +80,17 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     }
   }
 
-  // Fetch like status and count (similar to your useEffect)
+  // Fetch like status and count
   Future<void> _fetchLikeStatus(String postId) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId'),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final userService = UserService();
-        final currentUserId = userService.getDefaultUserId();
-        final likes = data['likes'] is List ? data['likes'] as List : [];
-        
+      final likeData = await apiService.fetchLikeStatus(postId, UserService().getDefaultUserId());
+      if (likeData != null) {
         setState(() {
-          _likeCounts[postId] = likes.length;
-          _likeStatuses[postId] = likes.contains(currentUserId);
+          _likeCounts[postId] = likeData['likeCount'] ?? 0;
+          _likeStatuses[postId] = likeData['isLiked'] ?? false;
         });
       }
-        } catch (e) {
+    } catch (e) {
       print('Error fetching like status for post $postId: $e');
     }
   }
@@ -111,12 +104,13 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
       });
     } catch (e) {
       print('Error fetching comment count for post $postId: $e');
-      // Set to 0 if there's an error
       setState(() {
         _commentCounts[postId] = 0;
       });
     }
-  }  Widget _buildPostCard(Map<String, dynamic> post) {
+  }
+
+  Widget _buildPostCard(Map<String, dynamic> post) {
     final postId = post['id'] ?? '';
     final caption = post['caption'] ?? '';
     final createdAt = post['createdAt'] ?? '';
@@ -132,12 +126,12 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
       _fetchCommentCount(postId);
     }
     
-    // Initialize like state for this post if not exists (similar to useEffect)
+    // Initialize like state for this post if not exists
     if (!_likeCounts.containsKey(postId)) {
       _fetchLikeStatus(postId);
     }
     
-    // Get like state from our maps (similar to your useState)
+    // Get like state from our maps
     final likesCount = _likeCounts[postId] ?? 0;
     final isLiked = _likeStatuses[postId] ?? false;
     
@@ -478,14 +472,14 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
+                        color: config.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         userType,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.orange.shade700,
+                          color: config.primaryColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -575,9 +569,9 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     }
   }
 
-  // Handle like (similar to your handleLike function)
+  // Handle like
   Future<void> _toggleLike(String postId, bool isCurrentlyLiked) async {
-    // Prevent multiple rapid taps on the same post (similar to likeLoading state)
+    // Prevent multiple rapid taps on the same post
     if (_likingPosts.contains(postId)) {
       return;
     }
@@ -588,41 +582,10 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     final currentUserId = userService.getDefaultUserId();
     
     try {
-      // Use DELETE for unlike, POST for like (same as your JS code)
-      final response = isCurrentlyLiked 
-        ? await http.delete(
-            Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'userId': currentUserId}),
-          )
-        : await http.post(
-            Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'userId': currentUserId}),
-          );
-      
-      // If DELETE is not supported, fall back to POST with action
-      if (response.statusCode == 405 || response.statusCode == 404) {
-        final fallbackResponse = await http.post(
-          Uri.parse('https://darshan-dharmlok.vercel.app/api/posts/$postId/like'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'userId': currentUserId,
-            'action': isCurrentlyLiked ? 'unlike' : 'like',
-          }),
-        );
-        
-        if (fallbackResponse.statusCode == 200 || fallbackResponse.statusCode == 201) {
-          final data = json.decode(fallbackResponse.body);
-          setState(() {
-            _likeCounts[postId] = data['likes'].length;
-            _likeStatuses[postId] = !isCurrentlyLiked;
-          });
-        }
-      } else if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
+      final result = await apiService.toggleLike(postId, currentUserId, isCurrentlyLiked);
+      if (result != null) {
         setState(() {
-          _likeCounts[postId] = data['likes'].length;
+          _likeCounts[postId] = result['likes'].length;
           _likeStatuses[postId] = !isCurrentlyLiked;
         });
       }
@@ -810,7 +773,7 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
                               }
                             }
                           },
-                          icon: const Icon(Icons.send, color: Colors.orange),
+                          icon: Icon(Icons.send, color: config.primaryColor),
                         ),
                       ],
                     ),
@@ -829,7 +792,7 @@ class _DharmguruPostsState extends State<DharmguruPosts> with AutomaticKeepAlive
     try {
       final userService = UserService();
       final currentUserId = userService.getDefaultUserId();
-      print('Sending comment: userId=[32m$currentUserId[0m, text=[32m$commentText[0m'); // DEBUG
+      print('Sending comment: userId=$currentUserId, text=$commentText'); // DEBUG
       final success = await CommentsService.addComment(
         postId: postId,
         userId: currentUserId,

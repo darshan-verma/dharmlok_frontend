@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:dharmlok_frontend/screens/dharmguru/dharmguru_screen.dart';
+import 'package:dharmlok_frontend/screens/user_profile/user_list_screen.dart';
+import 'package:dharmlok_frontend/config/user_type_config.dart';
 import 'package:dharmlok_frontend/widgets/custom_bottom_navbar.dart';
 import '../services/user_service.dart';
 
@@ -386,7 +387,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => DharmguruScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => UserListScreen(
+                              userType: UserType.dharmguru,
+                            ),
+                          ),
                         );
                       },
                       child: _buildDiscoverItem(
@@ -398,10 +403,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildDiscoverItem(
-                      'Kathavachak',
-                      'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
-                      'assets/images/dharmguru.png',
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserListScreen(
+                              userType: UserType.kathavachak,
+                            ),
+                          ),
+                        );
+                      },
+                      child: _buildDiscoverItem(
+                        'Kathavachak',
+                        'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
+                        'assets/images/dharmguru.png',
+                      ),
                     ),
                   ),
                 ],
@@ -418,10 +435,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildDiscoverItem(
-                      'Daily Panchang',
-                      'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
-                      'assets/images/dharmguru.png',
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserListScreen(
+                              userType: UserType.panditji,
+                            ),
+                          ),
+                        );
+                      },
+                      child: _buildDiscoverItem(
+                        'Panditji',
+                        'Lorem ipsum dolor sit amet consectetur. Sed elit id consectetur. Sed elit id consequat mollis est faucibus eros.',
+                        'assets/images/dharmguru.png',
+                      ),
                     ),
                   ),
                 ],
